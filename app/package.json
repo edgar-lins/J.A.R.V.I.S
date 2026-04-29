@@ -1,0 +1,16 @@
+{
+  "name": "jarvis",
+  "version": "1.0.0",
+  "description": "Jarvis — Personal AI Assistant",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev"
+  },
+  "dependencies": {
+    "three": "^0.171.0"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

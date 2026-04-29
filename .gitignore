@@ -1,0 +1,17 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.spotify_token
+backend/.google_token.json
+
+# Secrets
+backend/.env
+backend/google_credentials.json
+
+# Node
+app/node_modules/
+
+# macOS
+.DS_Store

@@ -1,0 +1,1100 @@
+<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8">
+<title>J.A.R.V.I.S</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+
+
+
+</style>
+
+<style>
+  :root {
+    --bg-0: #010712;
+    --bg-1: #020d1a;
+    --bg-2: #051726;
+    --line: rgba(0, 200, 224, 0.18);
+    --line-strong: rgba(0, 200, 224, 0.42);
+    --cyan: #00c8e0;
+    --cyan-dim: #0a8a9c;
+    --aqua: #00e5aa;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #cfeef5;
+    --text-dim: #6f97a3;
+    --text-faint: #3b5560;
+    --mono: "Share Tech Mono", ui-monospace, "SF Mono", Menlo, monospace;
+    --display: "Orbitron", var(--mono);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: var(--bg-0);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  /* ── Global ambient backdrop ──────────────────────────────── */
+  body::before {
+    /* radial cyan glow behind the whole UI */
+    content: "";
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse at 50% 45%, rgba(0,200,224,0.10) 0%, transparent 55%),
+      radial-gradient(ellipse at 15% 90%, rgba(0,229,170,0.05) 0%, transparent 50%),
+      linear-gradient(180deg, var(--bg-1) 0%, var(--bg-0) 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    /* CRT scanlines */
+    content: "";
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      rgba(0, 200, 224, 0.03) 0px,
+      rgba(0, 200, 224, 0.03) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    pointer-events: none;
+    z-index: 9999;
+    mix-blend-mode: screen;
+  }
+
+  /* ── Window chrome ────────────────────────────────────────── */
+  .titlebar {
+    -webkit-app-region: drag;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(0,200,224,0.05), transparent);
+    position: relative;
+    z-index: 2;
+    gap: 14px;
+  }
+  .titlebar .brand {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.42em;
+    color: var(--cyan);
+    text-shadow: 0 0 8px rgba(0,200,224,0.5);
+  }
+  .titlebar .brand span { color: var(--text-dim); margin-left: 8px; letter-spacing: 0.2em; font-weight: 400; }
+  .titlebar .meta {
+    flex: 1;
+    display: flex;
+    gap: 18px;
+    color: var(--text-faint);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+  }
+  .titlebar .meta b { color: var(--text-dim); font-weight: 400; }
+  .titlebar .win-controls {
+    -webkit-app-region: no-drag;
+    display: flex;
+    gap: 4px;
+  }
+  .titlebar .win-controls button {
+    width: 28px; height: 22px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .titlebar .win-controls button:hover { border-color: var(--cyan); color: var(--cyan); }
+  .titlebar .win-controls button.close:hover { border-color: var(--red); color: var(--red); }
+
+  /* ── Main grid layout ─────────────────────────────────────── */
+  .stage {
+    position: relative;
+    z-index: 1;
+    height: calc(100vh - 34px);
+    display: grid;
+    grid-template-columns: 320px 1fr 340px;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  /* ── Panel primitive with HUD corner brackets ─────────────── */
+  .panel {
+    position: relative;
+    background:
+      linear-gradient(180deg, rgba(0,200,224,0.025), transparent 40%),
+      rgba(2, 13, 26, 0.55);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .panel::before, .panel::after,
+  .panel > .corner-tl, .panel > .corner-tr,
+  .panel > .corner-bl, .panel > .corner-br {
+    content: "";
+    position: absolute;
+    width: 10px; height: 10px;
+    border-color: var(--cyan);
+    border-style: solid;
+    pointer-events: none;
+  }
+  .panel::before { top: -1px; left: -1px; border-width: 1px 0 0 1px; }
+  .panel::after  { top: -1px; right: -1px; border-width: 1px 1px 0 0; }
+  .panel > .corner-bl { bottom: -1px; left: -1px; border-width: 0 0 1px 1px; }
+  .panel > .corner-br { bottom: -1px; right: -1px; border-width: 0 1px 1px 0; }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--line);
+    font-family: var(--display);
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+  }
+  .panel-head .tag {
+    color: var(--cyan);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    padding: 2px 6px;
+    border: 1px solid var(--line);
+    border-radius: 1px;
+  }
+  .panel-body { padding: 12px; flex: 1; min-height: 0; overflow: hidden; }
+  .panel-body.scroll { overflow-y: auto; }
+
+  /* Custom scrollbars */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line-strong); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--cyan-dim); }
+
+  /* ── LEFT COLUMN ──────────────────────────────────────────── */
+  .col-left { display: grid; grid-template-rows: auto auto auto 1fr; gap: 14px; min-height: 0; }
+
+  /* Clock */
+  .clock-face {
+    text-align: left;
+    padding: 4px 2px;
+  }
+  .clock-time {
+    font-family: var(--display);
+    font-weight: 500;
+    font-size: 44px;
+    color: var(--cyan);
+    letter-spacing: 0.06em;
+    text-shadow: 0 0 12px rgba(0,200,224,0.45);
+    line-height: 1;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .clock-time .sec {
+    font-size: 18px;
+    color: var(--aqua);
+    letter-spacing: 0.1em;
+    opacity: 0.8;
+  }
+  .clock-date {
+    margin-top: 6px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+  }
+  .clock-bar {
+    margin-top: 10px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--cyan), transparent);
+    opacity: 0.7;
+  }
+
+  /* Weather */
+  .weather {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .weather .icon {
+    width: 56px; height: 56px;
+    border: 1px solid var(--line-strong);
+    display: grid; place-items: center;
+    font-size: 26px;
+    color: var(--aqua);
+    background: rgba(0,229,170,0.04);
+    position: relative;
+  }
+  .weather .icon::before {
+    content: ""; position: absolute; inset: 3px;
+    border: 1px dashed rgba(0,229,170,0.2);
+  }
+  .weather .info { flex: 1; }
+  .weather .temp {
+    font-family: var(--display);
+    font-size: 28px;
+    color: var(--text);
+    letter-spacing: 0.04em;
+    line-height: 1;
+  }
+  .weather .temp sup { font-size: 14px; color: var(--text-dim); }
+  .weather .cond { font-size: 11px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .weather .loc { font-size: 11px; color: var(--cyan); margin-top: 2px; letter-spacing: 0.2em; }
+
+  /* Reminders */
+  .reminders { display: flex; flex-direction: column; gap: 8px; }
+  .reminder {
+    display: grid;
+    grid-template-columns: 6px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border: 1px solid var(--line);
+    background: rgba(0,200,224,0.025);
+    position: relative;
+  }
+  .reminder .pip {
+    width: 6px; height: 6px;
+    background: var(--cyan);
+    box-shadow: 0 0 6px var(--cyan);
+  }
+  .reminder.urgent .pip { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .reminder .label { font-size: 12px; color: var(--text); letter-spacing: 0.04em; }
+  .reminder .when { font-size: 10px; color: var(--text-dim); margin-top: 2px; letter-spacing: 0.2em; text-transform: uppercase; }
+  .reminder .countdown {
+    font-family: var(--display);
+    font-size: 11px;
+    color: var(--aqua);
+    letter-spacing: 0.12em;
+  }
+  .reminder.urgent .countdown { color: var(--amber); }
+
+  /* Logs / data stream */
+  .data-stream-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #data-stream {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-dim);
+    padding-right: 4px;
+  }
+  #data-stream .line { display: flex; gap: 8px; }
+  #data-stream .line .ts { color: var(--text-faint); flex-shrink: 0; }
+  #data-stream .line.ok .msg { color: var(--aqua); }
+  #data-stream .line.warn .msg { color: var(--amber); }
+  #data-stream .line.err .msg { color: var(--red); }
+  #data-stream .line.sys .msg { color: var(--cyan); }
+
+  /* ── CENTER COLUMN ────────────────────────────────────────── */
+  .col-center { display: grid; grid-template-rows: 1fr auto auto; gap: 14px; min-height: 0; }
+
+  .core-stage {
+    position: relative;
+    border: 1px solid var(--line);
+    background:
+      radial-gradient(circle at 50% 50%, rgba(0,200,224,0.08), transparent 70%),
+      rgba(2, 13, 26, 0.4);
+    overflow: hidden;
+    display: grid;
+    place-items: center;
+    min-height: 0;
+  }
+  /* HUD corner marks on the core stage too */
+  .core-stage > .hud-mark {
+    position: absolute; width: 14px; height: 14px;
+    border: 1px solid var(--cyan); pointer-events: none;
+  }
+  .core-stage > .hud-mark.tl { top: 8px; left: 8px; border-width: 1px 0 0 1px; }
+  .core-stage > .hud-mark.tr { top: 8px; right: 8px; border-width: 1px 1px 0 0; }
+  .core-stage > .hud-mark.bl { bottom: 8px; left: 8px; border-width: 0 0 1px 1px; }
+  .core-stage > .hud-mark.br { bottom: 8px; right: 8px; border-width: 0 1px 1px 0; }
+
+  /* Concentric reticle rings around the globe */
+  .reticle {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: 560px; height: 560px;
+    border-radius: 50%;
+    border: 1px dashed rgba(0,200,224,0.15);
+    pointer-events: none;
+  }
+  .reticle.r2 { width: 460px; height: 460px; border-style: solid; border-color: rgba(0,200,224,0.10); }
+  .reticle.r3 {
+    width: 420px; height: 420px;
+    border: 1px solid rgba(0,200,224,0.18);
+    animation: spin 60s linear infinite;
+  }
+  .reticle.r3::before, .reticle.r3::after {
+    content: ""; position: absolute;
+    width: 8px; height: 8px;
+    background: var(--cyan); box-shadow: 0 0 8px var(--cyan);
+  }
+  .reticle.r3::before { top: -4px; left: 50%; transform: translateX(-50%); }
+  .reticle.r3::after  { bottom: -4px; left: 50%; transform: translateX(-50%); background: var(--aqua); box-shadow: 0 0 8px var(--aqua); }
+  @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+
+  /* Globe container — required, 400×400 */
+  #globe-container {
+    width: 400px;
+    height: 400px;
+    position: relative;
+    z-index: 2;
+  }
+  #globe-container::after {
+    /* subtle inner glow if globe.js hasn't injected yet */
+    content: "";
+    position: absolute; inset: 0;
+    border-radius: 50%;
+    box-shadow: inset 0 0 80px rgba(0,200,224,0.15);
+    pointer-events: none;
+  }
+
+  /* Status indicators floating on the core stage */
+  .core-tag {
+    position: absolute;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    z-index: 3;
+  }
+  .core-tag.tl { top: 18px; left: 30px; }
+  .core-tag.tr { top: 18px; right: 30px; text-align: right; }
+  .core-tag.bl { bottom: 18px; left: 30px; }
+  .core-tag.br { bottom: 18px; right: 30px; text-align: right; }
+  .core-tag b { color: var(--cyan); font-weight: normal; }
+
+  /* Wake / session badge */
+  .session-badge {
+    position: absolute;
+    top: 14px; left: 50%;
+    transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 12px;
+    border: 1px solid var(--line-strong);
+    background: rgba(0, 229, 170, 0.08);
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    color: var(--aqua);
+    z-index: 4;
+  }
+  .session-badge.idle { color: var(--text-dim); border-color: var(--line); background: rgba(0,200,224,0.04); }
+  .session-badge .sb-dot {
+    width: 6px; height: 6px;
+    background: var(--aqua);
+    box-shadow: 0 0 8px var(--aqua);
+    animation: blink 1.4s ease-in-out infinite;
+  }
+  .session-badge.idle .sb-dot { background: var(--text-dim); box-shadow: none; animation: none; }
+  @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+  /* Chat */
+  .chat-panel { display: flex; flex-direction: column; min-height: 0; height: 240px; }
+  #chat-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  .msg {
+    max-width: 78%;
+    padding: 8px 12px;
+    font-size: 13px;
+    line-height: 1.5;
+    border: 1px solid var(--line);
+    position: relative;
+    letter-spacing: 0.01em;
+  }
+  .msg::before {
+    content: attr(data-from);
+    position: absolute;
+    top: -8px; left: 8px;
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    background: var(--bg-1);
+    padding: 0 6px;
+    color: var(--text-dim);
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: rgba(0, 200, 224, 0.06);
+    border-color: rgba(0, 200, 224, 0.4);
+    color: var(--text);
+  }
+  .msg.user::before { content: "USER"; color: var(--cyan); }
+  .msg.jarvis {
+    align-self: flex-start;
+    background: rgba(0, 229, 170, 0.04);
+    border-color: rgba(0, 229, 170, 0.3);
+    color: var(--text);
+  }
+  .msg.jarvis::before { content: "J.A.R.V.I.S"; color: var(--aqua); }
+
+  /* Input row */
+  .input-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 8px;
+    padding: 10px;
+    border-top: 1px solid var(--line);
+    align-items: center;
+  }
+  .icon-btn {
+    width: 36px; height: 36px;
+    background: transparent;
+    border: 1px solid var(--line-strong);
+    color: var(--cyan);
+    font-family: var(--mono);
+    font-size: 16px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: all 0.15s;
+  }
+  .icon-btn:hover { background: rgba(0,200,224,0.1); border-color: var(--cyan); }
+  #mic-btn.recording {
+    color: var(--bg-0);
+    background: var(--aqua);
+    border-color: var(--aqua);
+    animation: pulse-mic 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse-mic {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,170,0.6); }
+    50% { box-shadow: 0 0 0 8px rgba(0,229,170,0); }
+  }
+  #text-input {
+    background: rgba(0,200,224,0.04);
+    border: 1px solid var(--line-strong);
+    color: var(--text);
+    padding: 0 12px;
+    height: 36px;
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  #text-input::placeholder { color: var(--text-faint); letter-spacing: 0.18em; }
+  #text-input:focus { border-color: var(--cyan); }
+  .send-btn {
+    height: 36px;
+    padding: 0 18px;
+    background: rgba(0,200,224,0.08);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+    font-family: var(--display);
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .send-btn:hover { background: var(--cyan); color: var(--bg-0); }
+
+  /* Waveform sits between input and chat as a thin band */
+  #waveform {
+    width: 100%;
+    height: 36px;
+    display: block;
+    background: rgba(0,200,224,0.025);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* ── RIGHT COLUMN ─────────────────────────────────────────── */
+  .col-right { display: grid; grid-template-rows: auto auto 1fr; gap: 14px; min-height: 0; }
+
+  /* Metrics */
+  .metrics { display: flex; flex-direction: column; gap: 12px; }
+  .metric { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+  .metric .name {
+    font-size: 10px; color: var(--text-dim);
+    letter-spacing: 0.32em; text-transform: uppercase;
+  }
+  .metric .val {
+    font-family: var(--display);
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 0.06em;
+    justify-self: end;
+  }
+  .metric .bar {
+    grid-column: 1 / -1;
+    height: 6px;
+    background: rgba(0,200,224,0.08);
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  .metric .bar > i {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--cyan), var(--aqua));
+    transition: width 0.6s ease;
+  }
+  .metric.warn .val { color: var(--amber); }
+  .metric.warn .bar > i { background: linear-gradient(90deg, var(--amber), #fbbf24); }
+
+  /* Spotify (generic music player — no third-party branding) */
+  .player { display: flex; flex-direction: column; gap: 10px; }
+  .player .track {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+    align-items: center;
+  }
+  .player .art {
+    width: 48px; height: 48px;
+    background:
+      repeating-linear-gradient(45deg, rgba(0,229,170,0.18) 0 4px, transparent 4px 8px),
+      rgba(0,229,170,0.05);
+    border: 1px solid var(--line-strong);
+    display: grid;
+    place-items: center;
+    color: var(--aqua);
+    font-size: 18px;
+  }
+  .player .title { font-size: 13px; color: var(--text); letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .player .artist { font-size: 10px; color: var(--text-dim); letter-spacing: 0.2em; margin-top: 3px; text-transform: uppercase; }
+  .player .progress {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 8px;
+    align-items: center;
+    font-size: 9px;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+  }
+  .player .progress .track-bar {
+    height: 3px;
+    background: rgba(0,200,224,0.1);
+    border: 1px solid var(--line);
+    position: relative;
+  }
+  .player .progress .track-bar > i {
+    display: block; height: 100%; width: 38%;
+    background: linear-gradient(90deg, var(--cyan), var(--aqua));
+  }
+  .player .controls {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+  }
+  .player .controls button {
+    width: 32px; height: 28px;
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--mono);
+    font-size: 12px;
+    transition: all 0.15s;
+  }
+  .player .controls button:hover { color: var(--cyan); border-color: var(--cyan); }
+  .player .controls button.play {
+    color: var(--aqua); border-color: var(--aqua);
+    width: 44px;
+  }
+  .player .controls button.play:hover { background: rgba(0,229,170,0.12); }
+
+  /* Services */
+  .services { display: flex; flex-direction: column; gap: 6px; }
+  .service {
+    display: grid;
+    grid-template-columns: 12px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    background: rgba(0,200,224,0.02);
+    font-size: 11px;
+  }
+  .service .dot {
+    width: 8px; height: 8px;
+    background: var(--text-faint);
+    border-radius: 50%;
+  }
+  .service .dot.ok    { background: var(--aqua);  box-shadow: 0 0 6px var(--aqua); }
+  .service .dot.warn  { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .service .dot.err   { background: var(--red);   box-shadow: 0 0 6px var(--red); }
+  .service .name { letter-spacing: 0.2em; color: var(--text); text-transform: uppercase; font-size: 10px; }
+  .service .status {
+    font-size: 9px; letter-spacing: 0.2em;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+  .service .dot.ok ~ .status { color: var(--aqua); }
+  .service .dot.warn ~ .status { color: var(--amber); }
+  .service .dot.err ~ .status { color: var(--red); }
+
+  /* Hide native file input (required) */
+  #file-input { display: none; }
+
+  /* Section subtitle inside panel-body */
+  .sub {
+    font-size: 9px;
+    letter-spacing: 0.32em;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  /* Scrolling caret */
+  #data-stream .line:last-child .msg::after {
+    content: "▌";
+    color: var(--cyan);
+    margin-left: 4px;
+    animation: blink 1s steps(2) infinite;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Title bar ─────────────────────────────────────────── -->
+<header class="titlebar">
+  <div class="brand">J.A.R.V.I.S <span>// CORE INTERFACE v4.2</span></div>
+  <div class="meta">
+    <span><b>NODE</b> · LOCAL-01</span>
+    <span><b>UPLINK</b> · SECURE</span>
+    <span><b>LAT</b> · 12ms</span>
+  </div>
+  <div class="win-controls">
+    <button id="win-min" title="Minimize">—</button>
+    <button id="win-close" class="close" title="Close">✕</button>
+  </div>
+</header>
+
+<!-- ── Main stage ────────────────────────────────────────── -->
+<main class="stage">
+
+  <!-- ╔══ LEFT COLUMN ══════════════════════════════════╗ -->
+  <section class="col-left">
+
+    <!-- Clock -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Chronometer</span>
+        <span class="tag">UTC-3</span>
+      </div>
+      <div class="panel-body">
+        <div class="clock-face">
+          <div class="clock-time">
+            <span id="clk-hm">--:--</span><span class="sec" id="clk-s">--</span>
+          </div>
+          <div class="clock-date" id="clk-date">— — —</div>
+          <div class="clock-bar"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weather -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Atmospheric</span>
+        <span class="tag">LIVE</span>
+      </div>
+      <div class="panel-body">
+        <div class="weather">
+          <div class="icon" id="wx-icon">⛅</div>
+          <div class="info">
+            <div class="temp" id="wx-temp">23<sup>°C</sup></div>
+            <div class="cond" id="wx-cond">Parcialmente nublado</div>
+            <div class="loc" id="wx-loc">São Paulo, BR</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reminders -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Reminders</span>
+        <span class="tag" id="reminder-count">3 ATIVOS</span>
+      </div>
+      <div class="panel-body">
+        <div class="reminders" id="reminders-list">
+          <div class="reminder urgent">
+            <span class="pip"></span>
+            <div>
+              <div class="label">Reunião com Pepper</div>
+              <div class="when">Hoje · 14:30</div>
+            </div>
+            <div class="countdown">00:12:45</div>
+          </div>
+          <div class="reminder">
+            <span class="pip"></span>
+            <div>
+              <div class="label">Revisar arquivos do projeto</div>
+              <div class="when">Hoje · 16:00</div>
+            </div>
+            <div class="countdown">01:42:18</div>
+          </div>
+          <div class="reminder">
+            <span class="pip"></span>
+            <div>
+              <div class="label">Ligar para Rhodey</div>
+              <div class="when">Amanhã · 09:00</div>
+            </div>
+            <div class="countdown">18:30:00</div>
+          </div>
+        </div>
+        <div id="next-event" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- Data stream / logs -->
+    <div class="panel data-stream-wrap">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Data Stream</span>
+        <span class="tag">FEED</span>
+      </div>
+      <div class="panel-body" style="display:flex;flex-direction:column;">
+        <div id="data-stream">
+          <div class="line sys"><span class="ts">[12:48:02]</span><span class="msg">› core interface online</span></div>
+          <div class="line ok"><span class="ts">[12:48:03]</span><span class="msg">› backend handshake ok</span></div>
+          <div class="line ok"><span class="ts">[12:48:04]</span><span class="msg">› neural mesh stable · 0.04ms</span></div>
+          <div class="line"><span class="ts">[12:48:09]</span><span class="msg">  ambient sweep complete</span></div>
+          <div class="line warn"><span class="ts">[12:48:14]</span><span class="msg">! elevenlabs latency +180ms</span></div>
+          <div class="line"><span class="ts">[12:48:21]</span><span class="msg">  cal sync · 12 events</span></div>
+          <div class="line ok"><span class="ts">[12:48:29]</span><span class="msg">› wake word armed</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ╔══ CENTER COLUMN ════════════════════════════════╗ -->
+  <section class="col-center">
+
+    <!-- Core / Globe -->
+    <div class="core-stage panel" style="background: radial-gradient(circle at 50% 50%, rgba(0,200,224,0.08), transparent 70%), rgba(2,13,26,0.4);">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+
+      <span class="hud-mark tl"></span><span class="hud-mark tr"></span>
+      <span class="hud-mark bl"></span><span class="hud-mark br"></span>
+
+      <div class="session-badge idle" id="session-badge">
+        <span class="sb-dot"></span>
+        <span id="session-text">AGUARDANDO WAKE WORD</span>
+      </div>
+
+      <div class="reticle r1"></div>
+      <div class="reticle r2"></div>
+      <div class="reticle r3"></div>
+
+      <div id="globe-container"></div>
+
+      <div class="core-tag tl"><b>STATE</b><br><span id="core-state">IDLE</span></div>
+      <div class="core-tag tr"><b>MODE</b><br>STANDBY</div>
+      <div class="core-tag bl"><b>FREQ</b><br>432.0 Hz</div>
+      <div class="core-tag br"><b>VECTOR</b><br>0.00, 0.00</div>
+    </div>
+
+    <!-- Waveform -->
+    <canvas id="waveform" width="1200" height="36"></canvas>
+
+    <!-- Chat + input -->
+    <div class="panel chat-panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Conversation</span>
+        <span class="tag">ENCRYPTED</span>
+      </div>
+      <div id="chat-area">
+        <div class="msg jarvis">Bom dia, senhor. Todos os sistemas operando dentro dos parâmetros nominais. Posso ajudá-lo com algo?</div>
+        <div class="msg user">Qual é a previsão para hoje?</div>
+        <div class="msg jarvis">Parcialmente nublado, máxima de 26°. Sua reunião com a senhorita Potts está programada para 14:30.</div>
+      </div>
+      <div class="input-row">
+        <button class="icon-btn" id="upload-btn" title="Anexar arquivo">⎙</button>
+        <button class="icon-btn" id="mic-btn" title="Microfone">◉</button>
+        <input id="text-input" type="text" placeholder="DIGITE UM COMANDO OU PERGUNTA…" autocomplete="off">
+        <button class="send-btn" id="send-btn">ENVIAR ▸</button>
+        <input id="file-input" type="file">
+      </div>
+    </div>
+  </section>
+
+  <!-- ╔══ RIGHT COLUMN ═════════════════════════════════╗ -->
+  <section class="col-right">
+
+    <!-- System metrics -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>System Diagnostics</span>
+        <span class="tag" id="m-up">UP 04:12:33</span>
+      </div>
+      <div class="panel-body">
+        <div class="metrics">
+          <div class="metric" id="met-mem">
+            <span class="name">Memória</span>
+            <span class="val" id="m-mem">42%</span>
+            <span class="bar"><i id="b-mem" style="width:42%"></i></span>
+          </div>
+          <div class="metric" id="met-cpu">
+            <span class="name">CPU</span>
+            <span class="val" id="m-cpu">28%</span>
+            <span class="bar"><i id="b-cpu" style="width:28%"></i></span>
+          </div>
+          <div class="metric" id="met-neu">
+            <span class="name">Neural Load</span>
+            <span class="val" id="m-neu">61%</span>
+            <span class="bar"><i id="b-neu" style="width:61%"></i></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Music player (generic) -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Audio Stream</span>
+        <span class="tag">♪ PLAYING</span>
+      </div>
+      <div class="panel-body">
+        <div class="player">
+          <div class="track">
+            <div class="art">♫</div>
+            <div style="min-width:0">
+              <div class="title" id="sp-title">Faixa em reprodução</div>
+              <div class="artist" id="sp-artist">Artista desconhecido</div>
+            </div>
+          </div>
+          <div class="progress">
+            <span id="sp-cur">1:24</span>
+            <span class="track-bar"><i id="sp-bar"></i></span>
+            <span id="sp-tot">3:42</span>
+          </div>
+          <div class="controls">
+            <button id="sp-prev" title="Anterior">⏮</button>
+            <button id="sp-play" class="play" title="Play/Pause">⏸</button>
+            <button id="sp-next" title="Próxima">⏭</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services status -->
+    <div class="panel">
+      <span class="corner-bl"></span><span class="corner-br"></span>
+      <div class="panel-head">
+        <span>Service Mesh</span>
+        <span class="tag">6 NODES</span>
+      </div>
+      <div class="panel-body scroll">
+        <div class="sub">Conectividade em tempo real</div>
+        <div class="services" id="services-list">
+          <div class="service"><span class="dot ok" id="dot-backend"></span><span class="name">Backend</span><span class="status">online · 12ms</span></div>
+          <div class="service"><span class="dot ok"></span><span class="name">Claude API</span><span class="status">online</span></div>
+          <div class="service"><span class="dot warn"></span><span class="name">ElevenLabs</span><span class="status">degraded</span></div>
+          <div class="service"><span class="dot ok"></span><span class="name">Spotify</span><span class="status">connected</span></div>
+          <div class="service"><span class="dot ok"></span><span class="name">GitHub</span><span class="status">authenticated</span></div>
+          <div class="service"><span class="dot err"></span><span class="name">Google Calendar</span><span class="status">offline</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- ── Wiring: minimal helpers that don't conflict with app.js ── -->
+<script>
+  // Window controls — guard ipcRenderer so the file still works in plain browser
+  (function(){
+    const tryIPC = (channel) => {
+      try {
+        // eslint-disable-next-line no-undef
+        if (typeof require === "function") {
+          const { ipcRenderer } = require("electron");
+          ipcRenderer.send(channel);
+        }
+      } catch (e) { /* not in electron — no-op */ }
+    };
+    document.getElementById("win-min").addEventListener("click", () => tryIPC("window-minimize"));
+    document.getElementById("win-close").addEventListener("click", () => tryIPC("window-close"));
+  })();
+
+  // Live clock — purely cosmetic; app.js can override if needed
+  (function(){
+    const hm = document.getElementById("clk-hm");
+    const ss = document.getElementById("clk-s");
+    const dt = document.getElementById("clk-date");
+    const months = ["JAN","FEV","MAR","ABR","MAI","JUN","JUL","AGO","SET","OUT","NOV","DEZ"];
+    const days   = ["DOM","SEG","TER","QUA","QUI","SEX","SÁB"];
+    function pad(n){ return String(n).padStart(2,"0"); }
+    function tick() {
+      const d = new Date();
+      hm.textContent = pad(d.getHours()) + ":" + pad(d.getMinutes());
+      ss.textContent = ":" + pad(d.getSeconds());
+      dt.textContent = `${days[d.getDay()]} · ${pad(d.getDate())} ${months[d.getMonth()]} ${d.getFullYear()}`;
+    }
+    tick();
+    setInterval(tick, 1000);
+  })();
+
+  // Upload button → open file input
+  document.getElementById("upload-btn").addEventListener("click", () => {
+    document.getElementById("file-input").click();
+  });
+
+  // Send button → submit text-input as a synthetic Enter (app.js owns the actual handler)
+  document.getElementById("send-btn").addEventListener("click", () => {
+    const inp = document.getElementById("text-input");
+    inp.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+
+  // Demo waveform — gentle ambient line; app.js can replace by drawing on the same canvas
+  (function(){
+    const c = document.getElementById("waveform");
+    const ctx = c.getContext("2d");
+    let t = 0;
+    function resize(){
+      const r = c.getBoundingClientRect();
+      c.width = Math.max(800, r.width * window.devicePixelRatio);
+      c.height = 36 * window.devicePixelRatio;
+    }
+    resize();
+    window.addEventListener("resize", resize);
+    function draw(){
+      ctx.clearRect(0,0,c.width,c.height);
+      const w = c.width, h = c.height;
+      ctx.lineWidth = 1.2 * window.devicePixelRatio;
+      ctx.strokeStyle = "rgba(0,200,224,0.55)";
+      ctx.beginPath();
+      for (let x = 0; x < w; x += 2) {
+        const y = h/2
+          + Math.sin((x*0.012) + t)*6
+          + Math.sin((x*0.04) + t*1.7)*3
+          + Math.sin((x*0.002) + t*0.4)*4;
+        if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      // mid line
+      ctx.strokeStyle = "rgba(0,200,224,0.12)";
+      ctx.beginPath(); ctx.moveTo(0, h/2); ctx.lineTo(w, h/2); ctx.stroke();
+      t += 0.06;
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  // Demo data-stream ticker — appends a fresh line every few seconds; app.js can pause/replace
+  (function(){
+    const stream = document.getElementById("data-stream");
+    const samples = [
+      { cls:"",     msg:"  context window · 64k tokens" },
+      { cls:"ok",   msg:"› vector store synced" },
+      { cls:"sys",  msg:"› ambient noise -42dB" },
+      { cls:"",     msg:"  heartbeat · ok" },
+      { cls:"warn", msg:"! token rate near limit" },
+      { cls:"ok",   msg:"› memory consolidated" },
+      { cls:"",     msg:"  task queue · 0 pending" },
+    ];
+    function ts(){
+      const d = new Date();
+      const p = n => String(n).padStart(2,"0");
+      return `[${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}]`;
+    }
+    setInterval(() => {
+      const s = samples[Math.floor(Math.random()*samples.length)];
+      const line = document.createElement("div");
+      line.className = "line " + s.cls;
+      line.innerHTML = `<span class="ts">${ts()}</span><span class="msg">${s.msg}</span>`;
+      stream.appendChild(line);
+      // keep last ~40 lines
+      while (stream.children.length > 40) stream.removeChild(stream.firstChild);
+      stream.scrollTop = stream.scrollHeight;
+    }, 3500);
+  })();
+
+  // Demo metric drift — app.js can call setMetric() too
+  (function(){
+    const targets = [
+      { v:"#m-mem", b:"#b-mem", base:42, span:8,  warn:false },
+      { v:"#m-cpu", b:"#b-cpu", base:28, span:30, warn:false },
+      { v:"#m-neu", b:"#b-neu", base:61, span:18, warn:true  },
+    ];
+    function step(){
+      targets.forEach(t => {
+        const val = Math.max(2, Math.min(98, t.base + (Math.random()-0.5)*t.span));
+        const r = Math.round(val);
+        document.querySelector(t.v).textContent = r + "%";
+        document.querySelector(t.b).style.width = r + "%";
+      });
+    }
+    step();
+    setInterval(step, 1800);
+  })();
+
+  // Session badge state cycling demo — app.js owns the real wake-word state.
+  // Expose a tiny API so app.js can call window.setSession('active', 45) etc.
+  window.setSession = function(state, seconds) {
+    const el = document.getElementById("session-badge");
+    const txt = document.getElementById("session-text");
+    el.classList.remove("idle");
+    if (state === "idle") {
+      el.classList.add("idle");
+      txt.textContent = "AGUARDANDO WAKE WORD";
+    } else if (state === "active") {
+      txt.textContent = `SESSÃO ATIVA · ${String(seconds||0).padStart(2,"0")}s`;
+    } else if (state === "listening") {
+      txt.textContent = "ESCUTANDO";
+    } else if (state === "thinking") {
+      txt.textContent = "PROCESSANDO";
+    } else if (state === "speaking") {
+      txt.textContent = "RESPONDENDO";
+    }
+  };
+
+  // Expose globe-state setter for hud.js / globe.js
+  window.setCoreState = function(state) {
+    const tag = document.getElementById("core-state");
+    tag.textContent = (state || "IDLE").toUpperCase();
+  };
+
+  // Mic button visual state — app.js toggles .recording, we just react
+  (function(){
+    const mic = document.getElementById("mic-btn");
+    const obs = new MutationObserver(() => {
+      // optionally mirror to the core state
+      if (mic.classList.contains("recording")) window.setCoreState("listening");
+    });
+    obs.observe(mic, { attributes: true, attributeFilter: ["class"] });
+  })();
+</script>
+
+<!-- External app modules — these own the real behavior -->
+<script src="globe.js"></script>
+<script src="hud.js"></script>
+<script src="app.js"></script>
+
+
+
+</body></html>

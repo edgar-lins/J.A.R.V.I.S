@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jarvis</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0f;
+      color: #e0e0e0;
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 20px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #1e1e2e;
+    }
+
+    .logo { font-size: 22px; font-weight: 700; color: #60a5fa; letter-spacing: 4px; }
+    .status { font-size: 12px; color: #4ade80; margin-left: auto; }
+    .status.thinking { color: #fbbf24; }
+    .status.speaking { color: #a78bfa; }
+
+    #chat {
+      flex: 1;
+      width: 100%;
+      max-width: 780px;
+      overflow-y: auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .msg {
+      max-width: 75%;
+      padding: 12px 16px;
+      border-radius: 16px;
+      line-height: 1.6;
+      font-size: 15px;
+    }
+
+    .msg.user {
+      background: #1e3a5f;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+      color: #bfdbfe;
+    }
+
+    .msg.jarvis {
+      background: #13131f;
+      align-self: flex-start;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #1e1e2e;
+      color: #e2e8f0;
+    }
+
+    .msg.jarvis .sender {
+      font-size: 11px;
+      color: #60a5fa;
+      font-weight: 600;
+      letter-spacing: 2px;
+      margin-bottom: 4px;
+    }
+
+    footer {
+      width: 100%;
+      max-width: 780px;
+      padding: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      border-top: 1px solid #1e1e2e;
+    }
+
+    #text-input {
+      flex: 1;
+      background: #13131f;
+      border: 1px solid #2d2d3f;
+      border-radius: 12px;
+      color: #e0e0e0;
+      font-size: 15px;
+      padding: 12px 16px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    #text-input:focus { border-color: #60a5fa; }
+
+    button {
+      background: #1e3a5f;
+      border: none;
+      border-radius: 12px;
+      color: #93c5fd;
+      cursor: pointer;
+      font-size: 20px;
+      padding: 12px 16px;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #2563eb; color: #fff; }
+
+    #mic-btn.recording {
+      background: #7f1d1d;
+      color: #fca5a5;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+
+    #upload-btn { font-size: 18px; }
+    .msg.exam {
+      background: #0f2a1f;
+      border: 1px solid #166534;
+      align-self: flex-start;
+      max-width: 85%;
+    }
+    .msg.exam .sender { color: #4ade80; }
+    .msg.exam .exam-name { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+    .upload-progress {
+      font-size: 13px; color: #fbbf24;
+      align-self: flex-start;
+      padding: 8px 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">J.A.R.V.I.S</span>
+  <span class="status" id="status">Online</span>
+</header>
+
+<div id="chat"></div>
+
+<input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png,.webp" style="display:none" />
+
+<footer>
+  <input id="text-input" type="text" placeholder="Fale com o Jarvis..." autocomplete="off" />
+  <button id="send-btn" title="Enviar">➤</button>
+  <button id="upload-btn" title="Enviar exame (PDF/imagem)">📎</button>
+  <button id="mic-btn" title="Falar">🎤</button>
+</footer>
+
+<script>
+  const chat = document.getElementById('chat');
+  const textInput = document.getElementById('text-input');
+  const sendBtn = document.getElementById('send-btn');
+  const micBtn = document.getElementById('mic-btn');
+  const uploadBtn = document.getElementById('upload-btn');
+  const fileInput = document.getElementById('file-input');
+  const statusEl = document.getElementById('status');
+
+  // Persiste o session ID no browser — Jarvis lembra o histórico entre recargas
+  let SESSION_ID = localStorage.getItem('jarvis_session_id');
+  if (!SESSION_ID) {
+    SESSION_ID = crypto.randomUUID();
+    localStorage.setItem('jarvis_session_id', SESSION_ID);
+  }
+
+  let mediaRecorder, audioChunks = [], isRecording = false;
+  let currentUtterance = null;
+
+  // Inicializa Web Speech API com voz em português brasileiro
+  const synth = window.speechSynthesis;
+  let ptVoice = null;
+  function loadVoices() {
+    const voices = synth.getVoices();
+    // Prioriza: masculino pt-BR > qualquer pt-BR > qualquer pt > padrão
+    ptVoice = voices.find(v => v.lang === 'pt-BR' && /felipe|eddy|reed|rocko/i.test(v.name))
+           || voices.find(v => v.lang === 'pt-BR')
+           || voices.find(v => v.lang.startsWith('pt-BR'))
+           || voices.find(v => v.lang.startsWith('pt'))
+           || voices[0];
+    console.log('[Jarvis] Voz selecionada:', ptVoice?.name, ptVoice?.lang);
+  }
+  loadVoices();
+  synth.onvoiceschanged = loadVoices;
+
+  function speak(text) {
+    if (currentUtterance) synth.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.voice = ptVoice;
+    utter.lang = 'pt-BR';
+    utter.rate = 1.05;
+    utter.pitch = 0.9;
+    utter.onstart = () => setStatus('Respondendo...', 'speaking');
+    utter.onend = () => setStatus('Online');
+    currentUtterance = utter;
+    synth.speak(utter);
+  }
+
+  function setStatus(label, cls = '') {
+    statusEl.textContent = label;
+    statusEl.className = 'status ' + cls;
+  }
+
+  function addMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    if (role === 'jarvis') {
+      div.innerHTML = `<div class="sender">JARVIS</div>${escHtml(text)}`;
+    } else {
+      div.textContent = text;
+    }
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  function escHtml(t) {
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  async function sendText(message) {
+    if (!message.trim()) return;
+    addMessage('user', message);
+    textInput.value = '';
+    setStatus('Pensando...', 'thinking');
+
+    try {
+      const res = await fetch('/voice/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, session_id: SESSION_ID }),
+      });
+
+      const data = await res.json();
+      const reply = data.reply || '';
+      addMessage('jarvis', reply);
+      speak(reply);
+    } catch (e) {
+      addMessage('jarvis', 'Erro ao conectar com o servidor.');
+      setStatus('Online');
+    }
+  }
+
+  async function sendVoice(audioBlob) {
+    setStatus('Transcrevendo...', 'thinking');
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'recording.webm');
+    formData.append('session_id', SESSION_ID);
+
+    try {
+      const res = await fetch('/voice/full', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.user_text) addMessage('user', data.user_text);
+      if (data.reply) { addMessage('jarvis', data.reply); speak(data.reply); }
+    } catch (e) {
+      addMessage('jarvis', 'Erro ao processar o áudio.');
+      setStatus('Online');
+    }
+  }
+
+  // ── Eventos ──────────────────────────────────────────────
+
+  sendBtn.addEventListener('click', () => sendText(textInput.value));
+
+  textInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) sendText(textInput.value);
+  });
+
+  micBtn.addEventListener('click', async () => {
+    if (isRecording) {
+      mediaRecorder.stop();
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      setStatus('Processando...', 'thinking');
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+      mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
+      mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        stream.getTracks().forEach(t => t.stop());
+        sendVoice(blob);
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      setStatus('Ouvindo...', 'speaking');
+    } catch (e) {
+      alert('Permita o acesso ao microfone para usar o modo de voz.');
+    }
+  });
+
+  // ── Upload de exames ──────────────────────────────────────
+
+  uploadBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    fileInput.value = '';
+
+    const progress = document.createElement('div');
+    progress.className = 'upload-progress';
+    progress.textContent = `📄 Analisando "${file.name}"...`;
+    chat.appendChild(progress);
+    chat.scrollTop = chat.scrollHeight;
+    setStatus('Analisando exame...', 'thinking');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/health/document', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      progress.remove();
+
+      const div = document.createElement('div');
+      div.className = 'msg exam';
+      div.innerHTML = `
+        <div class="sender">JARVIS — ANÁLISE DE EXAME</div>
+        <div class="exam-name">📄 ${escHtml(file.name)}</div>
+        ${escHtml(data.summary || 'Análise concluída.')}
+      `;
+      chat.appendChild(div);
+      chat.scrollTop = chat.scrollHeight;
+
+      if (data.summary) speak(data.summary.slice(0, 400));
+      setStatus('Online');
+    } catch (e) {
+      progress.remove();
+      addMessage('jarvis', `Erro ao analisar o exame "${file.name}".`);
+      setStatus('Online');
+    }
+  });
+</script>
+</body>
+</html>
