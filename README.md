@@ -2,7 +2,7 @@
 
 > Just A Rather Very Intelligent System — assistente pessoal com IA, voz e interface HUD.
 
-![Jarvis HUD](../../../Desktop/jarvis.png)
+![Jarvis HUD](docs/jarvis.png)
 
 ---
 
