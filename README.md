@@ -34,6 +34,7 @@ Jarvis é um assistente pessoal de IA inspirado no filme Iron Man, rodando 100% 
 |---|---|
 | **Google Calendar** | Criar, editar, deletar e listar eventos por voz |
 | **Gmail** | Ler, marcar como lido/não lido, responder e-mails |
+| **Google Sheets** | Ler e editar planilha financeira (uma aba por mês) |
 | **GitHub** | PRs, issues, notificações, detalhes de pull requests |
 | **Spotify** | Tocar, pausar, próxima, anterior, volume, o que está tocando |
 | **Brave Search** | Busca web em tempo real — placares, notícias, preços |
@@ -135,15 +136,21 @@ npm install
 
 ## Configurações opcionais
 
-### Google Calendar / Gmail
+### Google Calendar / Gmail / Sheets
 
 ```bash
 cd backend
 # Siga as instruções em: https://console.cloud.google.com
+# Ative as APIs: Google Calendar, Gmail e Google Sheets
 # Baixe as credenciais OAuth como google_credentials.json
-python -c "from integrations.google_calendar import get_auth_url; print(get_auth_url())"
-# Ou acesse http://localhost:8000/auth/google após iniciar o backend
+# Após iniciar o backend, acesse http://localhost:8000/auth/google
 ```
+
+Para o Google Sheets, adicione o ID da sua planilha no `.env`:
+
+| Variável | Como obter |
+|---|---|
+| `GOOGLE_SHEETS_ID` | ID na URL da planilha: `docs.google.com/spreadsheets/d/**ID**/edit` |
 
 ### Spotify
 
