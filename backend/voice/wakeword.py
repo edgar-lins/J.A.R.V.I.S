@@ -209,8 +209,8 @@ def _loop_inner(user_id: str) -> None:
                 command = _transcribe_command(cmd_int16)
                 print(f"[WakeWord] Comando (sessão): '{command}'")
                 if command and len(command) > 2:
-                    session_until = time.time() + _SESSION_TIMEOUT  # renova
                     _run_command(user_id, command, chat)
+                    session_until = time.time() + _SESSION_TIMEOUT  # renova após TTS terminar
                 # sem fala detectada: deixa o timer correr normalmente
             continue
 

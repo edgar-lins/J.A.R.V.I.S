@@ -18,4 +18,4 @@ def speak(text: str) -> None:
             os.unlink(tmp)
     except Exception as e:
         print(f"[Voice] Fallback TTS: {e}")
-        subprocess.Popen(["say", "-v", "Felipe", "-r", "175", text])
+        subprocess.run(["say", "-v", "Felipe", "-r", "175", text], check=False)
