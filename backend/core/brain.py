@@ -37,7 +37,8 @@ You have access to {name}'s personal profile, memories, health data, and routine
 - Track and analyze health data (weight, sleep, exams, blood tests)
 - Build and adapt workout and diet plans
 - Help with work tasks, code review, architecture decisions
-- Manage Google Calendar, Slack, GitHub (via tools)
+- Manage Google Calendar, Gmail, GitHub (via tools)
+- Read and edit Google Sheets (financial spreadsheet with one tab per month)
 - Control the Mac (via local agent)
 - Read and interpret uploaded medical exams (PDFs/images)
 
@@ -424,6 +425,53 @@ TOOLS = [
                 "reply_to_thread_id": {"type": "string", "description": "Thread ID to reply in the same thread"},
             },
             "required": ["to", "subject", "body"],
+        },
+    },
+    # ── Google Sheets ─────────────────────────────────────────
+    {
+        "name": "sheets_list_sheets",
+        "description": "Lista todas as abas (páginas) da planilha financeira do usuário.",
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "sheets_read",
+        "description": "Lê os dados de uma aba da planilha financeira. Use para consultar gastos, receitas ou saldo de um mês.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sheet_name": {"type": "string", "description": "Nome da aba, ex: 'Abril 2025'"},
+                "range": {"type": "string", "description": "Range opcional no formato A1:Z100. Se omitido, lê a aba inteira."},
+            },
+            "required": ["sheet_name"],
+        },
+    },
+    {
+        "name": "sheets_append_row",
+        "description": "Adiciona uma nova linha no final de uma aba da planilha. Use para registrar um novo gasto ou receita.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sheet_name": {"type": "string", "description": "Nome da aba, ex: 'Abril 2025'"},
+                "values": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Valores das colunas na ordem da planilha, ex: ['30/04/2025', 'Mercado', '150', 'Alimentação']",
+                },
+            },
+            "required": ["sheet_name", "values"],
+        },
+    },
+    {
+        "name": "sheets_update_cell",
+        "description": "Atualiza o valor de uma célula específica na planilha.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sheet_name": {"type": "string", "description": "Nome da aba"},
+                "cell": {"type": "string", "description": "Referência da célula, ex: 'B5'"},
+                "value": {"type": "string", "description": "Novo valor"},
+            },
+            "required": ["sheet_name", "cell", "value"],
         },
     },
     # ── Mac Agent ─────────────────────────────────────────────
@@ -844,6 +892,46 @@ def handle_tool_call(user_id: str, tool_name: str, tool_input: dict) -> str:
             return f"E-mail enviado. ID: {result['id']}"
         except Exception as e:
             return f"Erro ao enviar e-mail: {e}"
+
+    # ── Google Sheets ─────────────────────────────────────────
+
+    elif tool_name == "sheets_list_sheets":
+        try:
+            from integrations.google_sheets import list_sheets, is_authenticated
+            if not is_authenticated():
+                return "Google não autenticado. Acesse http://localhost:8000/auth/google"
+            sheets = list_sheets()
+            return "Abas da planilha: " + ", ".join(sheets)
+        except Exception as e:
+            return f"Erro ao listar abas: {e}"
+
+    elif tool_name == "sheets_read":
+        try:
+            from integrations.google_sheets import read_sheet, format_sheet_for_jarvis, is_authenticated
+            if not is_authenticated():
+                return "Google não autenticado. Acesse http://localhost:8000/auth/google"
+            rows = read_sheet(tool_input["sheet_name"], tool_input.get("range", ""))
+            return format_sheet_for_jarvis(rows, tool_input["sheet_name"])
+        except Exception as e:
+            return f"Erro ao ler planilha: {e}"
+
+    elif tool_name == "sheets_append_row":
+        try:
+            from integrations.google_sheets import append_row, is_authenticated
+            if not is_authenticated():
+                return "Google não autenticado. Acesse http://localhost:8000/auth/google"
+            return append_row(tool_input["sheet_name"], tool_input["values"])
+        except Exception as e:
+            return f"Erro ao adicionar linha: {e}"
+
+    elif tool_name == "sheets_update_cell":
+        try:
+            from integrations.google_sheets import update_cell, is_authenticated
+            if not is_authenticated():
+                return "Google não autenticado. Acesse http://localhost:8000/auth/google"
+            return update_cell(tool_input["sheet_name"], tool_input["cell"], tool_input["value"])
+        except Exception as e:
+            return f"Erro ao atualizar célula: {e}"
 
     # ── Mac Agent ─────────────────────────────────────────────
 

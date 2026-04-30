@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     brave_api_key: str = ""
     spotify_client_id: str = ""
     spotify_client_secret: str = ""
+    google_sheets_id: str = ""
 
 
     class Config:

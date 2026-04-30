@@ -10,6 +10,7 @@ from googleapiclient.discovery import build
 SCOPES = [
     "https://www.googleapis.com/auth/calendar",
     "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/spreadsheets",
 ]
 TOKEN_PATH = Path(".google_token.json")
 CREDENTIALS_PATH = Path("google_credentials.json")
