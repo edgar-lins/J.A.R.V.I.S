@@ -34,7 +34,7 @@ Jarvis é um assistente pessoal de IA inspirado no filme Iron Man, rodando 100% 
 |---|---|
 | **Google Calendar** | Criar, editar, deletar e listar eventos por voz |
 | **Gmail** | Ler, marcar como lido/não lido, responder e-mails |
-| **Google Sheets** | Ler e editar planilha financeira (uma aba por mês) |
+| **Google Sheets** | Ler e editar planilhas |
 | **GitHub** | PRs, issues, notificações, detalhes de pull requests |
 | **Spotify** | Tocar, pausar, próxima, anterior, volume, o que está tocando |
 | **Brave Search** | Busca web em tempo real — placares, notícias, preços |
